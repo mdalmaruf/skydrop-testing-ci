@@ -1,0 +1,77 @@
+# Continuous Integration (CI) and Continuous Deployment (CD) for SkyDrop
+name: CI
+
+on:
+  push:
+    branches: [ main ]        # every push to main
+  pull_request:
+    branches: [ main ]        # every pull request into main
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  # ---------- CI: build and test every change ----------
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v7
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Compile the code and the tests
+        run: |
+          javac -d out/main src/*.java
+          javac -d out/test -cp "out/main:lib/*" test/*.java
+
+      - name: Run the unit tests (with JaCoCo coverage)
+        run: |
+          curl -sSL -o jacoco.zip https://repo1.maven.org/maven2/org/jacoco/jacoco/0.8.12/jacoco-0.8.12.zip
+          unzip -q jacoco.zip -d jacoco
+          java -javaagent:jacoco/lib/jacocoagent.jar=destfile=jacoco.exec \
+               -jar lib/junit-platform-console-standalone-*.jar execute \
+               --class-path out/main:out/test --scan-class-path
+
+      - name: Coverage report and summary
+        if: always()
+        run: |
+          java -jar jacoco/lib/jacococli.jar report jacoco.exec \
+               --classfiles out/main --sourcefiles src --html coverage --csv coverage.csv
+          echo "### Code coverage" >> $GITHUB_STEP_SUMMARY
+          echo "| Class | Lines covered | Branches covered |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|---|" >> $GITHUB_STEP_SUMMARY
+          tail -n +2 coverage.csv | awk -F, '{l=$8+$9; b=$6+$7;
+            printf "| %s | %d%% | %s |\n", $3, (l?100*$9/l:100), (b?int(100*$7/b)"%":"n/a")}' >> $GITHUB_STEP_SUMMARY
+
+      - name: Save the coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: coverage
+
+      - name: Prepare the website (main branch only)
+        if: github.event_name == 'push'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: coverage
+
+  # ---------- CD: publish the coverage website after main passes ----------
+  deploy:
+    if: github.event_name == 'push'
+    needs: test
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

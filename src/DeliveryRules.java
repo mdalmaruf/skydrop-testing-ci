@@ -60,4 +60,9 @@ public class DeliveryRules {
         double needed = distanceKm * 2 * BATTERY_PER_KM + RESERVE_PERCENT;
         return batteryPercent >= needed;
     }
+
+    /** 6. Weather check: no flying in rain, or when the wind is 40 km/h or more. */
+    public static boolean isSafeToFly(double windKmh, boolean raining) {
+        return windKmh < 40 && !raining;
+    }
 }

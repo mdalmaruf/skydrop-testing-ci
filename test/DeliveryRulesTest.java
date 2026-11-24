@@ -88,4 +88,20 @@ class DeliveryRulesTest {
         // 8 km there + 8 km back = 16 km x 5% = 80%, plus 10% reserve = 90%
         assertFalse(DeliveryRules.hasEnoughBattery(8, 60));
     }
+
+    // ---------- isSafeToFly ----------
+    @Test
+    void calmDryWeatherIsSafe() {
+        assertTrue(DeliveryRules.isSafeToFly(15, false));
+    }
+
+    @Test
+    void rainIsNotSafe() {
+        assertFalse(DeliveryRules.isSafeToFly(10, true));
+    }
+
+    @Test
+    void windOfFortyIsTooStrong() {
+        assertFalse(DeliveryRules.isSafeToFly(40, false));
+    }
 }

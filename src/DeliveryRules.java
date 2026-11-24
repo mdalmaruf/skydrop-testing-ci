@@ -63,6 +63,6 @@ public class DeliveryRules {
 
     /** 6. Weather check: no flying in rain, or when the wind is 40 km/h or more. */
     public static boolean isSafeToFly(double windKmh, boolean raining) {
-        return windKmh <= 40 && !raining;
+        return windKmh < 40 && !raining;
     }
 }
